@@ -1,0 +1,170 @@
+openapi: 3.0.0
+info:
+  title: Library Management API
+  description: API đơn giản để quản lý đầu sách trong thư viện.
+  version: 4.0.0
+
+servers:
+  - url: /v1
+    description: Version 1.0
+  - url: /v2
+    description: Version 2.0
+  - url: /v3
+    description: Version 3.0
+  - url: /v4
+    description: Version 4.0
+
+tags:
+  - name: Books
+    description: Books Management
+
+paths:
+  /books:
+    get:
+      tags:
+        - Books
+      summary: Get all books
+      description: Return a list of books
+      operationId: getBooks
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrayResponse'
+    post:
+      tags:
+        - Books
+      summary: Push a book
+      operationId: addBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookInput'
+      responses:
+        '201':
+          description: Created!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResponse'
+        '400':
+          description: Missing data!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /books/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Books
+      summary: Get detail a book
+      operationId: getBook
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResponse'
+        '404':
+          description: Not Found!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Books
+      summary: Update a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookInput'
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResponse'
+        '404':
+          description: Not Found!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Books
+      summary: Delete a book
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '404':
+          description: Not Found!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Book:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        author: { type: string }
+        isbn: { type: string }
+
+    ArrayResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Book'
+      
+    ObjectResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Book'
+        
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean  }
+        message: { type: string }
+        data: { nullable: true }
+    
+    SuccessNoDataResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { nullable: true }
