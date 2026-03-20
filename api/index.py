@@ -17,75 +17,79 @@ def home():
     # Đưa người dùng sang trang tài liệu API
     return redirect('/apidocs/')
 
-# Database in-memory
+# --- MOCK DATA ---
 books = [
-    {"id": 1, "title": "Clean Code", "author": "Robert C. Martin", "isbn": "978-0132350884"},
-    {"id": 2, "title": "The Pragmatic Programmer", "author": "Andrew Hunt", "isbn": "978-0135957059"}
+    {"id": 1, "title": "Đắc Nhân Tâm", "author": "Dale Carnegie"},
+    {"id": 2, "title": "Nhà Giả Kim", "author": "Paulo Coelho"}
 ]
 
-# Hàm chuẩn hóa Response
-def send_response(success=True, data=None, message="", status_code=200):
-    return jsonify({
-        "success": success,
-        "message": message,
-        "data": data
-    }), status_code
+# --- HÀM CHUẨN HÓA FORMAT PHẢN HỒI ---
+def api_response(success, data=None, message="", status_code=200):
+    """Đảm bảo mọi API đều trả về format: { success, message, data/error }"""
+    response = {"success": success, "message": message}
+    if success:
+        response["data"] = data
+    else:
+        response["error"] = data # Chứa chi tiết lỗi nếu có
+    return jsonify(response), status_code
 
-@app.route('/v1/books', methods=['GET'])
-@app.route('/v2/books', methods=['GET'])
-@app.route('/v3/books', methods=['GET'])
-@app.route('/v4/books', methods=['GET'])
+# --- API ENDPOINTS ---
+
+# Endpoint để phục vụ file swagger.yaml từ thư mục hiện tại ('.')
+@app.route('/swagger.yaml')
+def serve_swagger():
+    return send_from_directory('.', 'swagger.yaml')
+
+# 1. GET /books
+@app.route('/books', methods=['GET'])
 def get_books():
-    return send_response(data=books, message="Successfully retrieved the list of books!", status_code=200)
+    return api_response(True, data=books, message="Lay danh sach thanh cong", status_code=200)
 
-@app.route('/v2/books', methods=['POST'])
-@app.route('/v3/books', methods=['POST'])
-@app.route('/v4/books', methods=['POST'])
-def add_book():
-    data = request.json
-    if not data or 'title' not in data or 'author' not in data or 'isbn' not in data:
-        return send_response(success=False, message="Missing required data!", status_code=400)
+# 2. GET /books/{id}
+@app.route('/books/<int:book_id>', methods=['GET'])
+def get_book(book_id):
+    book = next((b for b in books if b["id"] == book_id), None)
+    if not book:
+        return api_response(False, message="Khong tim thay sach", status_code=404)
     
+    return api_response(True, data=book, message="Lay thong tin thanh cong", status_code=200)
+
+# 3. POST /books
+@app.route('/books', methods=['POST'])
+def create_book():
+    data = request.get_json()
+    if not data or not data.get("title") or not data.get("author"):
+        return api_response(False, message="Thieu title hoac author", status_code=400)
     new_book = {
-        "id": books[-1]['id'] + 1 if books else 1,
-        "title": data['title'],
-        "author": data['author'],
-        "isbn": data['isbn']
+        "id": max([b['id'] for b in books] + [0]) + 1,
+        "title": data.get("title"),
+        "author": data.get("author")
     }
     books.append(new_book)
-    return send_response(data=new_book, message="New book added successfully!", status_code=201)
+    return api_response(True, data=new_book, message="Them sach thanh cong", status_code=201)
 
-@app.route('/v3/books/<int:id>', methods=['GET'])
-@app.route('/v4/books/<int:id>', methods=['GET'])
-def get_book(id):
-    book = next((b for b in books if b['id'] == id), None)
+# 4. PUT /books/{id}
+@app.route('/books/<int:book_id>', methods=['PUT'])
+def update_book(book_id):
+    book = next((b for b in books if b["id"] == book_id), None)
     if not book:
-        return send_response(success=False, message="Not found!", status_code=404)
-    return send_response(data=book, message="Successfully retrieved a book!", status_code=200)
-
-@app.route('/v4/books/<int:id>', methods=['PUT'])
-def update_book(id):
-    book = next((b for b in books if b['id'] == id), None)
-    if not book:
-        return send_response(success=False, message="Not found!", status_code=404)
+        return api_response(False, message="Khong tim thay sach nay", status_code=404)
     
-    data = request.json
-    if not data:
-        return send_response(success=False, message="No data!", status_code=400)
-
+    data = request.get_json()
     book.update({
-        "title": data.get('title', book['title']),
-        "author": data.get('author', book['author']),
-        "isbn": data.get('isbn', book['isbn'])
+        "title": data.get("title", book["title"]),
+        "author": data.get("author", book["author"])
     })
-    return send_response(data=book, message="Book update successful!", status_code=200)
+    return api_response(True, data=book, message="Cap nhat sach thanh cong", status_code=200)
 
-@app.route('/v4/books/<int:id>', methods=['DELETE'])
-def delete_book(id):
+# 5. DELETE /books/{id}
+@app.route('/books/<int:book_id>', methods=['DELETE'])
+def delete_book(book_id):
     global books
-    book = next((b for b in books if b['id'] == id), None)
+    book = next((b for b in books if b["id"] == book_id), None)
     if not book:
-        return send_response(success=False, message="Not found!", status_code=404)
+        return api_response(False, message="Khong tim thay sach nay", status_code=404)
     
-    books = [b for b in books if b['id'] != id]
-    return send_response(data=None, message="The book has been removed from the system!", status_code=200)
+    books = [b for b in books if b["id"] != book_id]
+    return api_response(True, data={"id": book_id}, message="Xoa sach thanh cong", status_code=200)
+ 
